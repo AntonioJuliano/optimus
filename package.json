@@ -1,0 +1,32 @@
+{
+  "name": "ethnexus-compiler",
+  "version": "1.0.0",
+  "description": "Ethereum contract compiler as a service",
+  "main": "server.js",
+  "scripts": {
+    "start": "nodemon server.js --ignore bin/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntonioJuliano/ethnexus-compiler.git"
+  },
+  "author": "Antonio Juliano",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AntonioJuliano/ethnexus-compiler/issues"
+  },
+  "homepage": "https://github.com/AntonioJuliano/ethnexus-compiler#readme",
+  "dependencies": {
+    "async-eval": "^0.1.5",
+    "bluebird": "^3.4.7",
+    "body-parser": "^1.16.1",
+    "dotenv": "^4.0.0",
+    "express": "^4.14.1",
+    "express-validator": "^3.1.2",
+    "fs-promise": "^2.0.0",
+    "node-fetch": "^1.6.3",
+    "solc": "^0.4.9",
+    "winston": "^2.3.1"
+  }
+}
