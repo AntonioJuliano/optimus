@@ -1,12 +1,11 @@
 const solc = require('solc');
-const bluebirdPromise = require("bluebird");
+const Promise = require("bluebird");
 const logger = require('./logger');
 const fetch = require('node-fetch');
-const fs = require('fs-promise');
-const asyncEval = require('async-eval');
+const fs = require('fs');
 
-bluebirdPromise.promisifyAll(solc);
-bluebirdPromise.promisifyAll(asyncEval);
+Promise.promisifyAll(solc);
+Promise.promisifyAll(fs);
 
 let versions = {};
 
@@ -14,8 +13,9 @@ let versionedSolcs = {};
 
 let versionList = [];
 
+const path = 'https://ethereum.github.io/solc-bin/bin';
+
 const setup = function() {
-  const path = 'https://ethereum.github.io/solc-bin/bin';
   const listName = '/list.json';
 
   logger.info({
@@ -43,50 +43,31 @@ const setup = function() {
 
       let promises = [];
       for (version in versions) {
-        promises.push(fetch(path + "/" + versions[version]));
-      }
-      return Promise.all(promises);
-    }).then(function(results) {
-      let promises = [];
-      for (let i = 0; i < results.length; i++) {
-        promises.push(results[i].text());
+        promises.push(load(versions[version]));
       }
       return Promise.all(promises);
     }).then(function(results) {
       logger.info({
         at: 'solc#setup',
-        message: 'Fetched solcs',
+        message: 'Loaded solcs',
       });
       let promises = [];
       for (let i = 0; i < results.length; i++) {
-        console.log(i);
         promises.push(
-          asyncEvalAsync(results[i])
+          solc.setupMethods(results[i])
         );
       }
       return Promise.all(promises);
     }).then(function(results) {
       logger.info({
         at: 'solc#setup',
-        message: 'Evaluated solcs',
-      });
-      let promises = [];
-      for (let i = 0; i < results.length; i++) {
-        console.log(i);
-        promises.push(
-          solc.setupMethodsAsync(results[i])
-        );
-      }
-      return Promise.all(promises);
-    }).then(function(results) {
-      logger.info({
-        at: 'solc#setup',
-        message: 'Finished loading solcs',
+        message: 'Finished initializing solcs',
       });
       let i = 0;
       for (let i = 0; i < results.length; i++) {
-        versionedSolcs[versionList[i]] = r;
+        versionedSolcs[versionList[i]] = results[i];
       }
+      return Promise.resolve(true);
     }).catch(function(err) {
       console.error(err);
       logger.error({
@@ -95,6 +76,28 @@ const setup = function() {
         error: err
       })
     });
+}
+
+const load = function(version) {
+  const requirePath = '../bin/soljson/' + version.replace('.js', '');
+  try {
+    return require(requirePath);
+  } catch (e) {
+    logger.info({
+      at: 'solc#setup',
+      message: 'soljson version not found locally, requesting from remote',
+      version: version
+    });
+    return fetch(path + "/" + version)
+    .then(function(result) {
+      return result.text();
+    }).then(function(result) {
+      const path = __dirname + '/../bin/soljson/' + version;
+      return fs.writeFileAsync(path, result);
+    }).then(function() {
+      return require(requirePath);
+    });
+  }
 }
 
 setup();
