@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js --ignore bin/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prod_install": "npm install --production",
+    "prod": "NODE_ENV=production node server.js"
   },
   "repository": {
     "type": "git",

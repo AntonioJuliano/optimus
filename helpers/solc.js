@@ -3,11 +3,10 @@ const Promise = require("bluebird");
 const logger = require('./logger');
 const fetch = require('node-fetch');
 const fs = require('fs');
+const errors = require('./errors');
 
 Promise.promisifyAll(solc);
 Promise.promisifyAll(fs);
-
-let versions = {};
 
 let versionedSolcs = {};
 
@@ -15,7 +14,7 @@ let versionList = [];
 
 const path = 'https://ethereum.github.io/solc-bin/bin';
 
-const setup = function() {
+function setup() {
   const listName = '/list.json';
 
   logger.info({
@@ -28,21 +27,27 @@ const setup = function() {
     .then(function(res) {
       return res.json();
     }).then(function(json) {
-      tempVersions = {};
+      let versions = {};
+      let debugReleases = {};
+      debugReleases['0.2.1'] = 'soljson-v0.2.1+commit.91a6b35.js';
       for (const key in json.releases) {
         const version = json.releases[key];
-        tempVersions[key] = version;
+        versions[key] = version;
         versionList.push(key);
       }
       logger.info({
         at: 'solc#setup',
         message: 'Fetched soljson version list',
-        versions: tempVersions
+        versions: versions
       });
-      versions = tempVersions;
 
       let promises = [];
+      let i = 1;
       for (version in versions) {
+        logger.debug({
+          at: 'solc#setup',
+          message: 'Loading... (' + i++ + '/' + versionList.length + ')'
+        });
         promises.push(load(versions[version]));
       }
       return Promise.all(promises);
@@ -65,6 +70,7 @@ const setup = function() {
       });
       let i = 0;
       for (let i = 0; i < results.length; i++) {
+        Promise.promisifyAll(results[i]);
         versionedSolcs[versionList[i]] = results[i];
       }
       return Promise.resolve(true);
@@ -92,9 +98,11 @@ const load = function(version) {
     .then(function(result) {
       return result.text();
     }).then(function(result) {
+      // console.log("version: " + result);
       const path = __dirname + '/../bin/soljson/' + version;
       return fs.writeFileAsync(path, result);
     }).then(function() {
+      console.log('requiring ' + version);
       return require(requirePath);
     });
   }
@@ -102,29 +110,33 @@ const load = function(version) {
 
 setup();
 
-class SolcImpl {
-  getVersions() {
-    return versions;
-  }
+function getVersions() {
+  console.log(versionList);
+  return versionList;
+}
 
-  compile(source, version, optNum) {
-    if (versions[version] === undefined) {
-      return Promise.reject(new Error("Invalid version"));
-    }
-    return Promise.resolve(
-      solc.setupMethods(require("../bin/soljson/" + versions[version] + ".js"))
-    ).then(function(versionedSolc) {
-      bluebirdPromise.promisifyAll(versionedSolc);
-      // const compileAsync = bluebirdPromise.promisify(versionedSolc.compile);
-      // console.log(compileAsync);
-      return versionedSolc.compileAsync(source, optNum);
-    }).then(function(result) {
+function compile(source, version, optNum) {
+  if (versionedSolcs[version] === undefined) {
+    return Promise.reject(
+      new errors.ClientError("Invalid version", errors.errorCodes.invalidVersion)
+    );
+  }
+  console.log({
+    at: 'solc#compile',
+    message: 'compiling contract',
+    version: version,
+    source: source
+  });
+  return Promise.resolve(versionedSolcs[version].compile(source, optNum))
+    .then(function(result) {
       return {
         compiled: result,
         version: version
       };
-    })
-  }
+    }).catch(function(err) {
+      return Promise.reject(new errors.CompilationError(err));
+    });
 }
 
-module.exports = SolcImpl;
+module.exports.getVersions = getVersions;
+module.exports.compile = compile;

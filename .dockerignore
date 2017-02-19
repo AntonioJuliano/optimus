@@ -1,0 +1,6 @@
+.DS_Store
+README.md
+.gitignore
+.git
+bin/soljson/*
+node_modules

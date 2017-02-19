@@ -3,7 +3,7 @@ dotenv.load();
 
 const express = require('express');
 const app = express();
-const port = 3001;
+const port = 3002;
 const expressValidator = require('express-validator');
 const bodyParser = require('body-parser');
 const errors = require('./helpers/errors');

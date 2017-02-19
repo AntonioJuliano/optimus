@@ -22,10 +22,7 @@ router.post('/compile', (request, response) => {
         },
         'version': {
           in: 'body',
-          optional: true,
-          matches: {
-            options: solc.getVersions()
-          }
+          notEmpty: true
         },
         'optimized': {
           in: 'body',
@@ -48,14 +45,8 @@ router.post('/compile', (request, response) => {
           request.body.version,
           optNum
         );
-    }).catch(function(error) {
-      response.status(400).json({
-          error: 'Compilation Error',
-          errorCode: errors.errorCodes.compilationError
-      })
-    }).then(function(results) {
-      response.status(200).json({
-      });
+    }).then(function(contracts) {
+      response.status(200).json(contracts);
     }).catch(function(error) {
         errorHandler.handle(error, response);
     });
