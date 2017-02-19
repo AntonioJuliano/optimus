@@ -4,6 +4,12 @@ const logger = require('./logger');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const errors = require('./errors');
+const requirejs = require('requirejs');
+
+requirejs.config({
+    baseUrl: __dirname,
+    nodeRequire: require
+});
 
 Promise.promisifyAll(solc);
 Promise.promisifyAll(fs);
@@ -85,27 +91,25 @@ function setup() {
 }
 
 const load = function(version) {
+  const requireAsync = Promise.promisify(requirejs);
   const requirePath = '../bin/soljson/' + version.replace('.js', '');
-  try {
-    return require(requirePath);
-  } catch (e) {
+  return requireAsync([requirePath]).catch(function(err) {
     logger.info({
       at: 'solc#setup',
       message: 'soljson version not found locally, requesting from remote',
       version: version
     });
     return fetch(path + "/" + version)
-    .then(function(result) {
-      return result.text();
-    }).then(function(result) {
-      // console.log("version: " + result);
-      const path = __dirname + '/../bin/soljson/' + version;
-      return fs.writeFileAsync(path, result);
-    }).then(function() {
-      console.log('requiring ' + version);
-      return require(requirePath);
-    });
-  }
+      .then(function(result) {
+        return result.text();
+      }).then(function(result) {
+        const path = __dirname + '/../bin/soljson/' + version;
+        return fs.writeFileAsync(path, result);
+      }).then(function() {
+        console.log('requiring ' + version);
+        return requireAsync([requirePath]);
+      });
+  })
 }
 
 setup();
