@@ -36,8 +36,7 @@ router.post('/compile', (request, response) => {
     }).then(function(result) {
         logger.debug({
             at: 'solidity/compile',
-            message: "Compiling contract",
-            source: request.body.source
+            message: "Compiling contract"
         });
         const optNum = request.body.optimized ? 1 : 0;
         return solc.compile(
@@ -45,8 +44,8 @@ router.post('/compile', (request, response) => {
           request.body.version,
           optNum
         );
-    }).then(function(contracts) {
-      response.status(200).json(contracts);
+    }).then(function(result) {
+      response.status(200).json(result);
     }).catch(function(error) {
         errorHandler.handle(error, response);
     });

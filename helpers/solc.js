@@ -121,18 +121,25 @@ function compile(source, version, optNum) {
       new errors.ClientError("Invalid version", errors.errorCodes.invalidVersion)
     );
   }
-  console.log({
+  logger.info({
     at: 'solc#compile',
-    message: 'compiling contract',
-    version: version,
-    source: source
+    message: 'Compiling contract...',
+    version: version
   });
+  const timerStart = new Date();
   return Promise.resolve(versionedSolcs[version].compile(source, optNum))
     .then(function(result) {
-      return {
-        compiled: result,
-        version: version
-      };
+      const timeTaken = new Date() - timerStart;
+      logger.info({
+        at: 'solc#compile',
+        message: 'Finished compiling contract',
+        version: version,
+        time: timeTaken
+      });
+      if (result.errors !== undefined) {
+        return Promise.reject(new errors.CompilationError(result.errors));
+      }
+      return result;
     }).catch(function(err) {
       return Promise.reject(new errors.CompilationError(err));
     });
