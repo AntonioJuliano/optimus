@@ -111,7 +111,6 @@ const load = function(version) {
 setup();
 
 function getVersions() {
-  console.log(versionList);
   return versionList;
 }
 
