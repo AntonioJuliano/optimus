@@ -4,6 +4,7 @@ const logger = require('./logger');
 const fetch = require('node-fetch');
 const fs = require('fs');
 const errors = require('./errors');
+const abi = require('solc/abi');
 
 Promise.promisifyAll(solc);
 Promise.promisifyAll(fs);
@@ -98,11 +99,9 @@ const load = function(version) {
     .then(function(result) {
       return result.text();
     }).then(function(result) {
-      // console.log("version: " + result);
       const path = __dirname + '/../bin/soljson/' + version;
       return fs.writeFileAsync(path, result);
     }).then(function() {
-      console.log('requiring ' + version);
       return require(requirePath);
     });
   }
@@ -135,7 +134,7 @@ function compile(source, version, optNum) {
         version: version,
         time: timeTaken
       });
-      if (result.errors !== undefined) {
+      if (result.errors !== undefined && result.contracts === undefined) {
         return Promise.reject(new errors.CompilationError(result.errors));
       }
       return result;
@@ -144,5 +143,10 @@ function compile(source, version, optNum) {
     });
 }
 
+function getUpdatedAbi(version, oldAbi) {
+  return abi.update(version, oldAbi);
+}
+
 module.exports.getVersions = getVersions;
 module.exports.compile = compile;
+module.exports.getUpdatedAbi = getUpdatedAbi;
