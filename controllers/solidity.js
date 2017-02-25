@@ -45,6 +45,10 @@ router.post('/compile', (request, response) => {
           optNum
         );
     }).then(function(result) {
+      for (contractName in result.contracts) {
+        result.contracts[contractName].interface =
+          solc.getUpdatedAbi(request.body.version, result.contracts[contractName].interface);
+      }
       response.status(200).json(result);
     }).catch(function(error) {
         errorHandler.handle(error, response);
