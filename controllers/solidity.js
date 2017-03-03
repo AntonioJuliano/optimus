@@ -45,11 +45,25 @@ router.post('/compile', (request, response) => {
           optNum
         );
     }).then(function(result) {
+      let toReturn = { contracts: {} };
       for (contractName in result.contracts) {
-        result.contracts[contractName].interface =
-          solc.getUpdatedAbi(request.body.version, result.contracts[contractName].interface);
+        // Not sure why it sometimes returns the contract name starting with : like :ContractName
+        sanitizedContractName = contractName.replace(/^:/, '');
+        toReturn.contracts[sanitizedContractName] = result.contracts[contractName];
+
+        // sometimes this throws errors... :(
+        try {
+          toReturn.contracts[sanitizedContractName].interface =
+            solc.getUpdatedAbi(request.body.version, result.contracts[contractName].interface);
+        } catch (err)  {
+          logger.error({
+            at: 'solidity#compile',
+            message: 'getUpdatedAbi threw error',
+            error: err
+          });
+        }
       }
-      response.status(200).json(result);
+      response.status(200).json(toReturn);
     }).catch(function(error) {
         errorHandler.handle(error, response);
     });
