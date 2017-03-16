@@ -1,3 +1,5 @@
+'use strict';
+
 const solc = require('solc');
 const Promise = require("bluebird");
 const logger = require('./logger');
@@ -15,7 +17,7 @@ let versionList = [];
 
 const path = 'https://ethereum.github.io/solc-bin/bin';
 
-function setup() {
+async function setup() {
   const listName = '/list.json';
 
   logger.info({
@@ -24,68 +26,67 @@ function setup() {
     path: path + listName
   });
 
-  return fetch(path + listName)
-    .then(function(res) {
-      return res.json();
-    }).then(function(json) {
-      let versions = {};
-      let debugReleases = {};
-      debugReleases['0.2.1'] = 'soljson-v0.2.1+commit.91a6b35.js';
-      for (const key in json.releases) {
-        const version = json.releases[key];
-        versions[key] = version;
-        versionList.push(key);
-      }
-      logger.info({
-        at: 'solc#setup',
-        message: 'Fetched soljson version list',
-        versions: versions
-      });
-
-      let promises = [];
-      let i = 1;
-      for (version in versions) {
-        logger.debug({
-          at: 'solc#setup',
-          message: 'Loading... (' + i++ + '/' + versionList.length + ')'
-        });
-        promises.push(load(versions[version]));
-      }
-      return Promise.all(promises);
-    }).then(function(results) {
-      logger.info({
-        at: 'solc#setup',
-        message: 'Loaded solcs',
-      });
-      let promises = [];
-      for (let i = 0; i < results.length; i++) {
-        promises.push(
-          solc.setupMethods(results[i])
-        );
-      }
-      return Promise.all(promises);
-    }).then(function(results) {
-      logger.info({
-        at: 'solc#setup',
-        message: 'Finished initializing solcs',
-      });
-      let i = 0;
-      for (let i = 0; i < results.length; i++) {
-        Promise.promisifyAll(results[i]);
-        versionedSolcs[versionList[i]] = results[i];
-      }
-      return Promise.resolve(true);
-    }).catch(function(err) {
-      console.error(err);
-      logger.error({
-        at: 'solc#setup',
-        message: 'Failed to setup solc versions',
-        error: err
-      })
+  try {
+    const fetchResult = await fetch(path + listName);
+    const json = await fetchResult.json();
+    let versions = {};
+    // let debugReleases = {};
+    // debugReleases['0.2.1'] = 'soljson-v0.2.1+commit.91a6b35.js';
+    for (const key in json.releases) {
+      const version = json.releases[key];
+      versions[key] = version;
+      versionList.push(key);
+    }
+    logger.info({
+      at: 'solc#setup',
+      message: 'Fetched soljson version list',
+      versions: versions
     });
+
+    let promises = [];
+    let i = 1;
+    for (const version in versions) {
+      logger.debug({
+        at: 'solc#setup',
+        message: 'Loading... (' + i++ + '/' + versionList.length + ')'
+      });
+      promises.push(load(versions[version]));
+    }
+    const solcs = await Promise.all(promises);
+
+    logger.info({
+      at: 'solc#setup',
+      message: 'Loaded solcs',
+    });
+
+    promises = [];
+    for (let i = 0; i < solcs.length; i++) {
+      promises.push(
+        solc.setupMethods(solcs[i])
+      );
+    }
+    const initializedSolcs = await Promise.all(promises);
+
+    logger.info({
+      at: 'solc#setup',
+      message: 'Finished initializing solcs',
+    });
+    for (let i = 0; i < initializedSolcs.length; i++) {
+      Promise.promisifyAll(initializedSolcs[i]);
+      versionedSolcs[versionList[i]] = initializedSolcs[i];
+    }
+    return true;
+  } catch (e) {
+    console.error(e);
+    logger.error({
+      at: 'solc#setup',
+      message: 'Failed to setup solc versions',
+      error: e
+    });
+  }
 }
 
-const load = function(version) {
+const load = async function(version) {
   const requirePath = '../bin/soljson/' + version.replace('.js', '');
   try {
     return require(requirePath);
@@ -95,15 +96,11 @@ const load = function(version) {
       message: 'soljson version not found locally, requesting from remote',
       version: version
     });
-    return fetch(path + "/" + version)
-    .then(function(result) {
-      return result.text();
-    }).then(function(result) {
-      const path = __dirname + '/../bin/soljson/' + version;
-      return fs.writeFileAsync(path, result);
-    }).then(function() {
-      return require(requirePath);
-    });
+    const fetchResult = await fetch(path + "/" + version);
+    const fetchedText = await fetchResult.text();
+    const filePath = __dirname + '/../bin/soljson/' + version;
+    const writeFileResult = await fs.writeFileAsync(filePath, fetchedText);
+    return require(filePath);
   }
 }
 
@@ -113,34 +110,48 @@ function getVersions() {
   return versionList;
 }
 
-function compile(source, version, optNum) {
+async function compile(source, version, optNum, libraries) {
   if (versionedSolcs[version] === undefined) {
-    return Promise.reject(
-      new errors.ClientError("Invalid version", errors.errorCodes.invalidVersion)
-    );
+    throw new errors.ClientError("Invalid version", errors.errorCodes.invalidVersion);
   }
+
   logger.info({
     at: 'solc#compile',
     message: 'Compiling contract...',
     version: version
   });
   const timerStart = new Date();
-  return Promise.resolve(versionedSolcs[version].compile(source, optNum))
-    .then(function(result) {
-      const timeTaken = new Date() - timerStart;
-      logger.info({
-        at: 'solc#compile',
-        message: 'Finished compiling contract',
-        version: version,
-        time: timeTaken
-      });
-      if (result.errors !== undefined && result.contracts === undefined) {
-        return Promise.reject(new errors.CompilationError(result.errors));
+  let compileResult;
+  try {
+    compileResult = await versionedSolcs[version].compile(source, optNum);
+  } catch (e) {
+    throw new errors.CompilationError(e);
+  }
+  const timeTaken = new Date() - timerStart;
+  logger.info({
+    at: 'solc#compile',
+    message: 'Finished compiling contract',
+    version: version,
+    time: timeTaken
+  });
+  if (compileResult.errors !== undefined && compileResult.contracts === undefined) {
+    throw new errors.CompilationError(result.errors);
+  }
+  if (libraries !== null && libraries !== undefined) {
+    for (const library in libraries) {
+      for (const contractName in compileResult.contracts) {
+        compileResult.contracts[contractName].bytecode = solc.linkBytecode(
+          compileResult.contracts[contractName].bytecode,
+          library
+        );
+        compileResult.contracts[contractName].runtimeBytecode = solc.linkBytecode(
+          compileResult.contracts[contractName].runtimeBytecode,
+          library
+        );
       }
-      return result;
-    }).catch(function(err) {
-      return Promise.reject(new errors.CompilationError(err));
-    });
+    }
+  }
+  return compileResult;
 }
 
 function getUpdatedAbi(version, oldAbi) {
