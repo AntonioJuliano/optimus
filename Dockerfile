@@ -1,18 +1,16 @@
-FROM alpine:3.5
+FROM node:7.7.3-alpine
 
-RUN apk update && apk upgrade && \
-    apk add --no-cache git nodejs && \
-    mkdir -p /home/ethnexus/app 
-#     adduser -S ethnexus && \
-#     chown -R ethnexus /home/ethnexus
+RUN  mkdir -p /home/optimus/app
+#     adduser -S optimus && \
+#     chown -R optimus /home/ethnexus
 # USER ethnexus
 
-WORKDIR /home/ethnexus/app
+WORKDIR /home/optimus/app
 
-COPY package.json /home/ethnexus/app/package.json
+COPY package.json /home/optimus/app/package.json
 RUN npm run prod_install
 
-COPY . /home/ethnexus/app
+COPY . /home/optimus/app
 
 EXPOSE 3002
 
