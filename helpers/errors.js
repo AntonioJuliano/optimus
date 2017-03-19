@@ -1,3 +1,5 @@
+'use strict';
+
 const errorCodes = {
     invalidArguments: 1000,
     serverError: 1003,
