@@ -1,4 +1,4 @@
-'use strict';
+/* eslint global-require: 0 */
 
 const solc = require('solc');
 const Promise = require("bluebird");
@@ -30,17 +30,18 @@ async function setup() {
     const fetchResult = await fetch(path + listName);
     const json = await fetchResult.json();
     let versions = {};
-    // let debugReleases = {};
-    // debugReleases['0.2.1'] = 'soljson-v0.2.1+commit.91a6b35.js';
     for (const key in json.releases) {
       const version = json.releases[key];
+      if (!_shouldLoadVersion(key)) {
+        continue;
+      }
       versions[key] = version;
       versionList.push(key);
     }
     logger.info({
       at: 'solc#setup',
       message: 'Fetched soljson version list',
-      versions: versions
+      versions: versionList
     });
 
     let promises = [];
@@ -77,7 +78,7 @@ async function setup() {
     }
     return true;
   } catch (e) {
-    console.error(e);
+    console.log(e);
     logger.error({
       at: 'solc#setup',
       message: 'Failed to setup solc versions',
@@ -86,7 +87,7 @@ async function setup() {
   }
 }
 
-const load = async function(version) {
+async function load(version) {
   const requirePath = '../bin/soljson/' + version.replace('.js', '');
   try {
     return require(requirePath);
@@ -98,8 +99,8 @@ const load = async function(version) {
     });
     const fetchResult = await fetch(path + "/" + version);
     const fetchedText = await fetchResult.text();
-    const filePath = __dirname + '/../bin/soljson/' + version;
-    const writeFileResult = await fs.writeFileAsync(filePath, fetchedText);
+    const filePath = __dirname + '/../../bin/soljson/' + version;
+    await fs.writeFileAsync(filePath, fetchedText);
     return require(filePath);
   }
 }
@@ -108,6 +109,10 @@ setup();
 
 function getVersions() {
   return versionList;
+}
+
+function _shouldLoadVersion(version) {
+  return version.length >= 4 && version.substr(0, 4) !== '0.1.' && version.substr(0, 4) !== '0.2.';
 }
 
 async function compile(source, version, optNum, libraries) {
@@ -135,7 +140,7 @@ async function compile(source, version, optNum, libraries) {
     time: timeTaken
   });
   if (compileResult.errors !== undefined && compileResult.contracts === undefined) {
-    throw new errors.CompilationError(result.errors);
+    throw new errors.CompilationError(compileResult.errors);
   }
   if (libraries !== null && libraries !== undefined) {
     for (const library in libraries) {
