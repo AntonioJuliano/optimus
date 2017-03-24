@@ -1,24 +1,26 @@
 {
-  "name": "ethnexus-compiler",
+  "name": "optimus",
   "version": "1.0.0",
   "description": "Ethereum contract compiler as a service",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "nodemon server.js --ignore bin/",
+    "start": "nodemon src/server.js --ignore bin/",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prod_install": "npm install --production",
-    "prod": "NODE_ENV=production node server.js"
+    "prod": "NODE_ENV=production node src/server.js",
+    "lint": "eslint src/**.js"
   },
+  "pre-commit": [ "lint" ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AntonioJuliano/ethnexus-compiler.git"
+    "url": "git+https://github.com/AntonioJuliano/optimus.git"
   },
   "author": "Antonio Juliano",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/AntonioJuliano/ethnexus-compiler/issues"
+    "url": "https://github.com/AntonioJuliano/optimus/issues"
   },
-  "homepage": "https://github.com/AntonioJuliano/ethnexus-compiler#readme",
+  "homepage": "https://github.com/AntonioJuliano/optimus#readme",
   "dependencies": {
     "bluebird": "^3.4.7",
     "body-parser": "^1.16.1",
@@ -28,5 +30,10 @@
     "node-fetch": "^1.6.3",
     "solc": "^0.4.9",
     "winston": "^2.3.1"
+  },
+  "devDependencies": {
+    "babel-eslint": "^7.2.1",
+    "eslint": "^3.18.0",
+    "pre-commit": "^1.2.2"
   }
 }
