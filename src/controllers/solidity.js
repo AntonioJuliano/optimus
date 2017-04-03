@@ -40,20 +40,26 @@ router.post('/compile', async(request, response) => {
       request.body.libraries
     );
 
-    for (const contractName in compileResult.contracts) {
-      // Not sure why it sometimes returns the contract
-      // name starting with : like :ContractName
-      const sanitizedContractName = contractName.replace(/^:/, '');
+    // Not sure why it sometimes returns the contract
+    // name starting with : like :ContractName
+    let renamedContracts = {};
+    const keys = Object.keys(compileResult.contracts);
+    for (let i=0; i < keys.length; i++) {
+      const renamed = keys[i].replace(/^:/, "");
+      renamedContracts[renamed] = compileResult.contracts[keys[i]];
+    }
+    compileResult.contracts = renamedContracts;
 
+    for (const contractName in compileResult.contracts) {
       // sometimes this throws errors... :(
       try {
-        compileResult.contracts[sanitizedContractName].interface =
+        compileResult.contracts[contractName].interface =
           solc.getUpdatedAbi(request.body.version, compileResult.contracts[contractName].interface);
       } catch (err) {
         logger.error({
           at: 'solidity#compile',
           message: 'getUpdatedAbi threw error',
-          error: err
+          error: err.toString()
         });
       }
     }

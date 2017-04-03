@@ -78,11 +78,10 @@ async function setup() {
     }
     return true;
   } catch (e) {
-    console.log(e);
     logger.error({
       at: 'solc#setup',
       message: 'Failed to setup solc versions',
-      error: e
+      error: e.toString()
     });
   }
 }
